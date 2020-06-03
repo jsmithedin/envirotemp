@@ -17,10 +17,31 @@ from astral.geocoder import database, lookup
 from astral.sun import sun
 from datetime import datetime, timedelta
 
+from influxdb import InfluxDBClient
+from influxdb import SeriesHelper
+
 try:
     from smbus2 import SMBus
 except ImportError:
     from smbus import SMBus
+
+host = '192.168.1.166'
+port = 8086
+user = 'admin'
+password = 'admin'
+dbname = 'enviro'
+
+enviroClient = InfluxDBClient(host, port, user, password, dbname)
+
+
+class EnviroSeriesHelper(SeriesHelper):
+    class Meta:
+        client = enviroClient
+        series_name = 'event.stats.{server_name}'
+        fields = ['temperature', 'humidity', 'light', 'pressure']
+        tags = ['server_name']
+        bulk_size = 6
+        autocommit = True
 
 
 def calculate_y_pos(x, centre):
@@ -321,7 +342,6 @@ font_lg = ImageFont.truetype(UserFont, 14)
 # Margins
 margin = 3
 
-
 # Set up BME280 weather sensor
 bus = SMBus(1)
 bme280 = BME280(i2c_dev=bus)
@@ -451,3 +471,9 @@ while True:
 
     # Display image
     disp.display(img)
+
+    EnviroSeriesHelper(server_name='other_room',
+                       temperature=corr_temperature,
+                       humidity=corr_humidity,
+                       light=light,
+                       pressure=pressure)
